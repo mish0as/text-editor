@@ -1,0 +1,2704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Text Editor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600&family=Hind+Siliguri:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@400;500;600&family=Tiro+Bangla:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --primary-light: #818cf8;
+      --secondary: #06b6d4;
+      --accent: #f59e0b;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --dark: #1e293b;
+      --darker: #0f172a;
+      --darkest: #020617;
+      --light: #f8fafc;
+      --lighter: #ffffff;
+      --gray: #64748b;
+      --gray-light: #94a3b8;
+      --gray-lighter: #cbd5e1;
+      --border: rgba(148, 163, 184, 0.2);
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      --radius: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --radius-xs: 4px;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--lighter);
+      color: var(--darker);
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .container {
+      width: 100%;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .editor-wrapper {
+      background: var(--lighter);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      height: 100vh;
+    }
+
+    #toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 16px 20px;
+      background: var(--lighter);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      flex-shrink: 0;
+    }
+
+    .tool-group {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+
+    .tool-button, .tool-select {
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-xs);
+      padding: 6px 10px;
+      cursor: pointer;
+      transition: var(--transition-fast);
+      color: var(--dark);
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tool-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition: left 0.5s;
+    }
+
+    .tool-button:hover::before {
+      left: 100%;
+    }
+
+    .tool-button:hover, .tool-select:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .tool-button:active {
+      transform: translateY(0);
+    }
+
+    .tool-button.active {
+      background: var(--primary);
+      color: white;
+      box-shadow: var(--shadow);
+    }
+
+    .tool-select {
+      background: var(--lighter);
+      border: 1px solid var(--border);
+      min-width: 100px;
+      font-size: 12px;
+    }
+
+    .tool-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    #editor {
+      padding: 30px;
+      flex: 1;
+      outline: none;
+      line-height: 1.8;
+      font-size: 16px;
+      font-family: 'Inter', sans-serif;
+      background: var(--lighter);
+      position: relative;
+      overflow-y: auto;
+      height: calc(100vh - 80px);
+    }
+
+    #editor:focus {
+      background: rgba(255, 255, 255, 0.98);
+    }
+
+    #editor::before {
+      content: 'Start writing your masterpiece...';
+      position: absolute;
+      top: 30px;
+      left: 30px;
+      color: var(--gray-light);
+      font-style: italic;
+      pointer-events: none;
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    #editor:empty::before {
+      opacity: 1;
+    }
+
+    /* Enhanced Typography */
+    #editor h1, #editor h2, #editor h3, #editor h4, #editor h5, #editor h6 {
+      font-family: 'Playfair Display', serif;
+      font-weight: 600;
+      margin: 32px 0 16px 0;
+      line-height: 1.3;
+      color: var(--darker);
+    }
+
+    #editor h1 { font-size: 2.5rem; }
+    #editor h2 { font-size: 2rem; }
+    #editor h3 { font-size: 1.75rem; }
+    #editor h4 { font-size: 1.5rem; }
+    #editor h5 { font-size: 1.25rem; }
+    #editor h6 { font-size: 1.125rem; }
+
+    #editor p {
+      margin: 16px 0;
+      text-align: justify;
+    }
+
+    #editor strong {
+      font-weight: 600;
+      color: var(--darker);
+    }
+
+    #editor em {
+      font-style: italic;
+      color: var(--gray);
+    }
+
+    #editor a {
+      color: var(--primary);
+      text-decoration: none;
+      border-bottom: 2px solid transparent;
+      transition: var(--transition-fast);
+    }
+
+    #editor a:hover {
+      border-bottom-color: var(--primary);
+    }
+
+    /* Enhanced Media Styling */
+    #editor img, #editor video {
+      max-width: 100%;
+      border-radius: var(--radius-md);
+      margin: 24px 0;
+      box-shadow: var(--shadow-lg);
+      transition: var(--transition);
+      cursor: pointer;
+      position: relative;
+    }
+
+    #editor img:hover, #editor video:hover {
+      transform: scale(1.02);
+      box-shadow: var(--shadow-xl);
+    }
+
+    /* Enhanced Table Styling */
+#editor table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+#editor th, #editor td {
+  border: 1px solid var(--border);
+  padding: 8px;
+  text-align: left;
+}
+
+#editor th {
+  background-color: rgba(99, 102, 241, 0.1);
+  font-weight: 600;
+}
+
+    /* Table Controls */
+    .table-controls {
+      position: absolute;
+      background: var(--darkest);
+      color: white;
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      display: none;
+      z-index: 1002;
+      box-shadow: var(--shadow-xl);
+      gap: 4px;
+    }
+
+    .table-controls.show {
+      display: flex;
+    }
+
+    .table-controls button {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: white;
+      padding: 6px 8px;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      font-size: 12px;
+      transition: var(--transition-fast);
+    }
+
+    .table-controls button:hover {
+      background: var(--primary);
+    }
+
+    /* Enhanced Blockquote */
+#editor blockquote {
+  font-size: 1.25rem;
+  margin: 32px 0;
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  color: var(--gray);
+  padding: 24px 32px 24px 80px;
+  border-left: 4px solid var(--primary);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  position: relative;
+  display: block; /* Ensure it's a block element */
+}
+
+    #editor blockquote::before {
+      content: '"';
+      color: var(--primary);
+      font-size: 4rem;
+      position: absolute;
+      left: 20px;
+      top: 10px;
+      opacity: 0.3;
+      font-family: 'Playfair Display', serif;
+    }
+
+    /* Enhanced Lists */
+    #editor ul, #editor ol {
+      margin: 16px 0;
+      padding-left: 32px;
+    }
+
+    #editor li {
+      margin: 8px 0;
+      line-height: 1.6;
+    }
+
+    #editor ul li::marker {
+      color: var(--primary);
+    }
+
+    #editor ol li::marker {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* Code Styling */
+#editor pre {
+  background: #f5f5f5;
+  color: var(--light);
+  padding: 24px;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  margin: 24px 0;
+  position: relative;
+}
+
+#editor pre::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #485959;
+}
+
+    #editor code {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--primary);
+      padding: 4px 8px;
+      border-radius: var(--radius-xs);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* Balloon Toolbar */
+    #balloon-toolbar {
+      position: fixed;
+      display: flex;
+      gap: 4px;
+      background: var(--darkest);
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      box-shadow: var(--shadow-xl);
+      transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      z-index: 1001;
+    }
+
+    #balloon-toolbar.show {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    #balloon-toolbar::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+    }
+
+    #balloon-toolbar:not(.below)::after {
+      bottom: -8px;
+      border-top: 8px solid var(--darkest);
+      border-bottom: none;
+    }
+
+    #balloon-toolbar.below::after {
+      top: -8px;
+      border-bottom: 8px solid var(--darkest);
+      border-top: none;
+    }
+
+    #balloon-toolbar .tool-button {
+      color: white;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      padding: 8px;
+      min-height: auto;
+      border-radius: var(--radius-xs);
+      font-size: 14px;
+      font-weight: 500;
+      transition: var(--transition-fast);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+    }
+
+    #balloon-toolbar .tool-button:hover {
+      background: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    /* Find and Replace Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(5px);
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--lighter);
+      padding: 32px;
+      border-radius: var(--radius);
+      width: 90%;
+      max-width: 500px;
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--border);
+      position: relative;
+      animation: modalSlideIn 0.3s ease-out;
+    }
+
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--darker);
+      margin: 0;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--gray);
+      padding: 4px;
+      border-radius: var(--radius-xs);
+      transition: var(--transition-fast);
+    }
+
+    .modal-close:hover {
+      background: var(--error);
+      color: white;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--darker);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      transition: var(--transition-fast);
+      background: var(--lighter);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .form-options {
+      display: flex;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+    }
+
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: var(--transition-fast);
+      font-weight: 500;
+      font-size: 14px;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .btn-secondary {
+      background: var(--gray-lighter);
+      color: var(--dark);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--gray);
+      color: white;
+    }
+
+    /* Color Picker Enhancement */
+    input[type="color"] {
+      width: 40px;
+      height: 40px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 2px;
+      cursor: pointer;
+      background: var(--lighter);
+      transition: var(--transition-fast);
+    }
+
+    input[type="color"]:hover {
+      transform: scale(1.1);
+      box-shadow: var(--shadow);
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+      border: none;
+      border-radius: var(--radius-xs);
+    }
+
+    /* Table Creation Grid */
+    .table-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      gap: 2px;
+      width: 100%;
+      max-width: 300px;
+      aspect-ratio: 10/8;
+      margin: 20px 0;
+    }
+
+    .grid-cell {
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: var(--transition-fast);
+      border-radius: 2px;
+    }
+
+    .grid-cell:hover, .grid-cell.highlighted {
+      background: rgba(99, 102, 241, 0.3);
+    }
+
+    .grid-cell.selected {
+      background: var(--primary);
+      border-color: var(--primary-dark);
+    }
+
+    .size-display {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--primary);
+      margin-top: 12px;
+    }
+
+    /* Media Selection */
+.media-selected {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+    /* Resize Box */
+    #resizeBox {
+      position: fixed;
+      background: var(--darkest);
+      color: var(--light);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      display: none;
+      z-index: 1001;
+      box-shadow: var(--shadow-xl);
+      font-size: 14px;
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      min-width: 280px;
+    }
+
+    #resizeBox .resize-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+
+    #resizeBox .resize-title {
+      font-weight: 600;
+      color: var(--light);
+    }
+
+    #resizeBox .resize-close {
+      background: none;
+      border: none;
+      color: var(--gray-light);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px;
+      border-radius: var(--radius-xs);
+      transition: var(--transition-fast);
+    }
+
+    #resizeBox .resize-close:hover {
+      background: var(--error);
+      color: white;
+    }
+
+    #resizeBox .resize-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 8px;
+    }
+
+    #resizeBox .resize-label {
+      width: 60px;
+      font-weight: 500;
+      color: var(--gray-light);
+    }
+
+    #resizeBox input, #resizeBox select {
+      background: rgba(255,255,255,0.1);
+      color: var(--light);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: var(--radius-xs);
+      padding: 8px 12px;
+      font-size: 14px;
+      transition: var(--transition-fast);
+    }
+
+    #resizeBox input:focus, #resizeBox select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    #resizeBox input[type="number"] {
+      width: 80px;
+    }
+
+    #resizeBox select {
+      width: 60px;
+    }
+
+    #resizeBox .resize-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.2);
+    }
+
+    #resizeBox button {
+      background: var(--primary);
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+      transition: var(--transition-fast);
+      flex: 1;
+    }
+
+    #resizeBox button:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    #resizeBox button.secondary {
+      background: rgba(255,255,255,0.1);
+      color: var(--gray-light);
+    }
+
+    #resizeBox button.secondary:hover {
+      background: rgba(255,255,255,0.2);
+      color: var(--light);
+    }
+
+    #resizeBox .aspect-ratio-lock {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+
+    #resizeBox .aspect-ratio-lock input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+    }
+
+    #resizeBox .preset-sizes {
+      margin-top: 12px;
+    }
+
+    #resizeBox .preset-sizes .preset-label {
+      font-size: 12px;
+      color: var(--gray-light);
+      margin-bottom: 8px;
+    }
+
+    #resizeBox .preset-buttons {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    #resizeBox .preset-btn {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: var(--gray-light);
+      padding: 4px 8px;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      font-size: 12px;
+      transition: var(--transition-fast);
+    }
+
+    #resizeBox .preset-btn:hover {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+
+    /* Tooltip */
+    .tooltip {
+      position: relative;
+    }
+
+    .tooltip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--darkest);
+      color: white;
+      padding: 8px 12px;
+      border-radius: var(--radius-xs);
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: var(--transition-fast);
+      z-index: 1000;
+    }
+
+    .tooltip:hover::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    /* Success/Error Messages */
+    .message {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 16px 24px;
+      border-radius: var(--radius-sm);
+      color: white;
+      font-weight: 500;
+      z-index: 3000;
+      transform: translateX(400px);
+      transition: var(--transition);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .message.show {
+      transform: translateX(0);
+    }
+
+    .message.success {
+      background: var(--success);
+    }
+
+    .message.error {
+      background: var(--error);
+    }
+
+    .message.warning {
+      background: var(--warning);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      #toolbar {
+        padding: 12px 16px;
+        gap: 6px;
+      }
+      
+      .tool-group {
+        padding: 4px 6px;
+        gap: 3px;
+      }
+      
+      .tool-button, .tool-select {
+        padding: 4px 6px;
+        font-size: 11px;
+        min-height: 28px;
+      }
+      
+      #editor {
+        padding: 16px;
+        font-size: 14px;
+        height: calc(100vh - 60px);
+      }
+      
+      #editor::before {
+        top: 16px;
+        left: 16px;
+      }
+      
+      .modal-content {
+        padding: 20px;
+        margin: 16px;
+      }
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.05);
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    }
+
+    /* Animation Classes */
+    .fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Focus Styles */
+    .tool-button:focus-visible,
+    .tool-select:focus-visible,
+    .btn:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background: white;
+      }
+      
+      #toolbar,
+      #balloon-toolbar,
+      .modal {
+        display: none !important;
+      }
+      
+      .editor-wrapper {
+        box-shadow: none;
+        border: none;
+      }
+      
+      #editor {
+        padding: 0;
+        box-shadow: none;
+      }
+        #wordCountDisplay {
+    display: none !important;
+  }
+    }
+
+    #wordCountDisplay {
+  position: fixed;
+  bottom: 5px;
+  right: 16px;
+  background: var(--lighter);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 11px;
+  box-shadow: var(--shadow);
+  z-index: 1000;
+  display: block; /* Ensure it's visible */
+}
+
+/* Math Equation Styling */
+.math-equation {
+  display: inline-block;
+  margin: 8px 0;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: var(--radius-sm);
+  
+}
+
+.katex {
+  font-size: 1.1em !important;
+}
+
+.katex-display {
+  margin: 0.5em 0 !important;
+}
+
+
+@media print {
+  body {
+    background: white;
+    height: auto;
+    overflow: visible;
+    position: static;
+  }
+  
+  #toolbar,
+  #balloon-toolbar,
+  .modal,
+  #wordCountDisplay {
+    display: none !important;
+  }
+  
+  .container, 
+  .editor-wrapper {
+    height: auto;
+    overflow: visible;
+    box-shadow: none;
+    border: none;
+  }
+  
+  #editor {
+    padding: 0;
+    box-shadow: none;
+    height: auto;
+    overflow: visible;
+    page-break-after: auto;
+    page-break-inside: avoid;
+  }
+  
+  /* Ensure content breaks properly across pages */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  
+  p, li, blockquote {
+    page-break-inside: avoid;
+  }
+  
+  /* Prevent images from breaking across pages */
+  img {
+    page-break-inside: avoid;
+    page-break-after: avoid;
+    max-height: 9in; /* Prevent very tall images */
+  }
+  
+  /* Allow tables to break across pages */
+  table {
+    page-break-inside: auto;
+  }
+  
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  td, th {
+    page-break-inside: avoid;
+  }
+  
+  /* Prevent empty pages */
+  .editor-wrapper::after {
+    display: none;
+  }
+  
+  /* Ensure code blocks don't overflow */
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="editor-wrapper">
+      <!-- Toolbar -->
+      <div id="toolbar">
+        <!-- Text Formatting Group -->
+        <div class="tool-group">
+          <button class="tool-button tooltip" onclick="format('bold')" data-tooltip="Bold (Ctrl+B)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+              <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="format('italic')" data-tooltip="Italic (Ctrl+I)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="19" y1="4" x2="10" y2="4"></line>
+              <line x1="14" y1="20" x2="5" y2="20"></line>
+              <line x1="15" y1="4" x2="9" y2="20"></line>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="format('underline')" data-tooltip="Underline (Ctrl+U)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path>
+              <line x1="4" y1="21" x2="20" y2="21"></line>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="format('strikeThrough')" data-tooltip="Strikethrough">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 4H9a3 3 0 0 0-2.83 4"></path>
+              <path d="M14 12a4 4 0 0 1 0 8H6"></path>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Font and Size Group -->
+        <div class="tool-group">
+          <select class="tool-select" onchange="setFontFamily(this.value)" title="Font Family">
+  <option value="">Font Family</option>
+  <option value="Inter">Inter</option>
+  <option value="Playfair Display">Playfair Display</option>
+  <option value="JetBrains Mono">JetBrains Mono</option>
+  <option value="Georgia">Georgia</option>
+  <option value="Times New Roman">Times New Roman</option>
+  <option value="Arial">Arial</option>
+  <option value="Helvetica">Helvetica</option>
+  
+  <!-- Bangla Fonts -->
+  <option value="Anek Bangla">Anek Bangla</option>
+  <option value="Hind Siliguri">Hind Siliguri</option>
+  <option value="Tiro Bangla">Tiro Bangla</option>
+          </select>
+          <select class="tool-select" onchange="setFontSize(this.value)" title="Font Size">
+            <option value="">Size</option>
+            <option value="1">Small</option>
+            <option value="3">Normal</option>
+            <option value="4">Medium</option>
+            <option value="5">Large</option>
+            <option value="6">X-Large</option>
+            <option value="7">Heading</option>
+          </select>
+        </div>
+
+        <!-- Heading Group -->
+        <div class="tool-group">
+          <select class="tool-select" onchange="formatHeading(this.value)" title="Headings">
+            <option value="">Heading</option>
+            <option value="h1">Heading 1</option>
+            <option value="h2">Heading 2</option>
+            <option value="h3">Heading 3</option>
+            <option value="h4">Heading 4</option>
+            <option value="h5">Heading 5</option>
+            <option value="h6">Heading 6</option>
+            <option value="p">Paragraph</option>
+          </select>
+        </div>
+
+        <!-- Color Group -->
+        <div class="tool-group">
+            <input type="color" class="tooltip" title="Text Color" oninput="setColor(this.value)" data-tooltip="Text Color">
+            <input type="color" class="tooltip" title="Highlight Color" oninput="setHighlight(this.value)" value="#ffff00" data-tooltip="Highlight">
+          <button class="tool-button tooltip" onclick="format('removeFormat')" data-tooltip="Clear Formatting">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18"></path>
+              <path d="M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Alignment Group -->
+        <div class="tool-group">
+          <button class="tool-button tooltip" onclick="format('justifyLeft')" data-tooltip="Align Left">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <line x1="4" y1="12" x2="14" y2="12"></line>
+              <line x1="4" y1="18" x2="18" y2="18"></line>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="format('justifyCenter')" data-tooltip="Center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+              <line x1="6" y1="18" x2="18" y2="18"></line>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="format('justifyRight')" data-tooltip="Align Right">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <line x1="10" y1="12" x2="20" y2="12"></line>
+              <line x1="6" y1="18" x2="20" y2="18"></line>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="format('justifyFull')" data-tooltip="Justify">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <line x1="4" y1="18" x2="20" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Lists Group -->
+        <div class="tool-group">
+          <button class="tool-button tooltip" onclick="format('insertUnorderedList')" data-tooltip="Bullet List">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="format('insertOrderedList')" data-tooltip="Numbered List">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="10" y1="6" x2="21" y2="6"></line>
+              <line x1="10" y1="12" x2="21" y2="12"></line>
+              <line x1="10" y1="18" x2="21" y2="18"></line>
+              <path d="M4 6h1v4"></path>
+              <path d="M4 10h2"></path>
+              <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="format('indent')" data-tooltip="Increase Indent">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 8 7 12 3 16"></polyline>
+              <line x1="21" y1="12" x2="11" y2="12"></line>
+              <line x1="21" y1="6" x2="11" y2="6"></line>
+              <line x1="21" y1="18" x2="11" y2="18"></line>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="format('outdent')" data-tooltip="Decrease Indent">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="7 8 3 12 7 16"></polyline>
+              <line x1="21" y1="12" x2="11" y2="12"></line>
+              <line x1="21" y1="6" x2="11" y2="6"></line>
+              <line x1="21" y1="18" x2="11" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Insert Group -->
+        <div class="tool-group">
+          <button class="tool-button tooltip" onclick="createLink()" data-tooltip="Insert Link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="insertBlockquote()" data-tooltip="Blockquote">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path>
+              <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="showTableModal()" data-tooltip="Insert Table">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="3" y1="15" x2="21" y2="15"></line>
+              <line x1="12" y1="3" x2="12" y2="21"></line>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="insertHorizontalRule()" data-tooltip="Horizontal Line">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+            </svg>
+          </button>
+
+          <button class="tool-button tooltip" onclick="insertMathEquation()" data-tooltip="Insert Math Equation">
+          <svg width="16" height="16" viewBox="0 0 576 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"> <path d="M552 64h-48c-13.3 0-24 10.7-24 24v8H308.5L205.9 342.1 129.3 176H24C10.7 176 0 186.7 0 200v16c0 13.3 10.7 24 24 24h80.7l96.4 215.9c8.8 19.7 37.3 20.2 46.8 1L368 144h112v8c0 13.3 10.7 24 24 24h48c13.3 0 24-10.7 24-24V88c0-13.3-10.7-24-24-24z"/> </svg>
+          </button>
+
+        </div>
+
+        <!-- Media Group -->
+        <div class="tool-group">
+          <button class="tool-button tooltip" onclick="document.getElementById('imgUpload').click()" data-tooltip="Upload Image">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+          </button>
+          <input id="imgUpload" type="file" accept="image/*" style="display:none" onchange="insertImage(this)">
+          
+          <button class="tool-button tooltip" onclick="insertImageByUrl()" data-tooltip="Image from URL">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Tools Group -->
+        <div class="tool-group">
+          <button class="tool-button tooltip" onclick="showFindReplace()" data-tooltip="Find & Replace (Ctrl+F)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="insertCodeBlock()" data-tooltip="Code Block">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="format('undo')" data-tooltip="Undo (Ctrl+Z)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 7v6h6"></path>
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="format('redo')" data-tooltip="Redo (Ctrl+Y)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 7v6h-6"></path>
+              <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Export Group -->
+        <div class="tool-group">
+          <button class="tool-button tooltip" onclick="exportHTML()" data-tooltip="Export HTML">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="printDocument()" data-tooltip="Print">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+          </button>
+          <button class="tool-button tooltip" onclick="saveDocument()" data-tooltip="Save Document">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Editor Content Area -->
+      <div id="editor" contenteditable="true" spellcheck="true">
+        <h1>Welcome to the Enhanced Rich Text Editor</h1>
+        <p>This is a powerful, feature-rich text editor with modern design and advanced functionality. Start typing to explore all the features!</p>
+        
+        <h2>Key Features:</h2>
+        <ul>
+          <li><strong>Advanced Formatting:</strong> Bold, italic, underline, strikethrough, and more</li>
+          <li><strong>Rich Typography:</strong> Multiple font families, sizes, and heading styles</li>
+          <li><strong>Media Support:</strong> Images and enhanced resizing</li>
+          <li><strong>Find & Replace:</strong> Powerful search and replace functionality</li>
+          <li><strong>Tables:</strong> Interactive table creation and editing with advanced controls</li>
+          <li><strong>Code Blocks:</strong> Syntax-highlighted code snippets</li>
+          <li><strong>Export Options:</strong> HTML export and print functionality</li>
+        </ul>
+
+        <blockquote>
+          "The best way to find out if you can trust somebody is to trust them." - Ernest Hemingway
+        </blockquote>
+
+        <p>Try selecting some text to see the floating toolbar in action, or use the comprehensive toolbar above to format your content.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Balloon Toolbar -->
+  <div id="balloon-toolbar">
+    <button class="tool-button" onclick="format('bold')" title="Bold">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+        <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+      </svg>
+    </button>
+    <button class="tool-button" onclick="format('italic')" title="Italic">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="4" x2="10" y2="4"></line>
+        <line x1="14" y1="20" x2="5" y2="20"></line>
+        <line x1="15" y1="4" x2="9" y2="20"></line>
+      </svg>
+    </button>
+    <button class="tool-button" onclick="format('underline')" title="Underline">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path>
+        <line x1="4" y1="21" x2="20" y2="21"></line>
+      </svg>
+    </button>
+    <button class="tool-button" onclick="createLink()" title="Link">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+      </svg>
+    </button>
+    <button class="tool-button" onclick="insertBlockquote()" title="Quote">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path>
+              <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
+            </svg>
+    </button>
+  </div>
+
+  <!-- Find and Replace Modal -->
+  <div id="findReplaceModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Find and Replace</h3>
+        <button class="modal-close" onclick="closeFindReplace()">&times;</button>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label" for="findText">Find:</label>
+        <input type="text" id="findText" class="form-input" placeholder="Enter text to find...">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label" for="replaceText">Replace with:</label>
+        <input type="text" id="replaceText" class="form-input" placeholder="Enter replacement text...">
+      </div>
+      
+      <div class="form-options">
+        <div class="checkbox-group">
+          <input type="checkbox" id="matchCase">
+          <label for="matchCase">Match case</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="wholeWords">
+          <label for="wholeWords">Whole words only</label>
+        </div>
+      </div>
+      
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" onclick="findNext()">Find Next</button>
+        <button class="btn btn-secondary" onclick="findPrevious()">Find Previous</button>
+        <button class="btn btn-primary" onclick="replaceNext()">Replace</button>
+        <button class="btn btn-primary" onclick="replaceAll()">Replace All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Math Equation Modal -->
+<div id="mathModal" class="modal">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 class="modal-title">Insert Math Equation</h3>
+      <button class="modal-close" onclick="closeMathModal()">&times;</button>
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Enter LaTeX equation:</label>
+      <textarea id="mathInput" class="form-input" style="height: 100px; font-family: 'JetBrains Mono', monospace;" placeholder="E.g. \frac{a}{b} or x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}"></textarea>
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Preview:</label>
+      <div id="mathPreview" style="padding: 16px; background: white; border-radius: var(--radius-sm); border: 1px solid var(--border); min-height: 50px;"></div>
+    </div>
+    
+    <div class="modal-buttons">
+      <button class="btn btn-primary" onclick="insertMath()">Insert Equation</button>
+      <button class="btn btn-secondary" onclick="closeMathModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Table Creation Modal  -->
+<div id="tableModal" class="modal">
+  <div class="modal-content" style="max-width: 400px;">
+    <div class="modal-header">
+      <h3 class="modal-title">Create Table</h3>
+      <button class="modal-close" onclick="closeTableModal()">&times;</button>
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label" for="tableRows">Rows (1-20):</label>
+      <input type="number" id="tableRows" class="form-input" min="1" max="20" value="3">
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label" for="tableCols">Columns (1-20):</label>
+      <input type="number" id="tableCols" class="form-input" min="1" max="20" value="3">
+    </div>
+    
+    <div class="form-options">
+      <div class="checkbox-group">
+        <input type="checkbox" id="headerRow" checked>
+        <label for="headerRow">Header Row</label>
+      </div>
+    </div>
+    
+    <div class="modal-buttons">
+      <button class="btn btn-primary" onclick="createTable()">Create Table</button>
+      <button class="btn btn-secondary" onclick="closeTableModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+  <!-- HTML Export Modal -->
+  <div id="htmlModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">HTML Export</h3>
+        <button class="modal-close" onclick="closeHTMLModal()">&times;</button>
+      </div>
+      
+      <textarea id="htmlOutput" class="form-input" style="height: 300px; font-family: 'JetBrains Mono', monospace; font-size: 12px;" readonly></textarea>
+      
+      <div class="modal-buttons">
+        <button class="btn btn-primary" onclick="copyHTML()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          Copy to Clipboard
+        </button>
+        <button class="btn btn-secondary" onclick="downloadHTML()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Download HTML
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resize Box for Media -->
+  <div id="resizeBox">
+    <div class="resize-header">
+      <div class="resize-title">Resize Image</div>
+      <button class="resize-close" onclick="closeResize()">&times;</button>
+    </div>
+    
+    <div class="resize-row">
+      <span class="resize-label">Width:</span> 
+      <input type="number" id="resizeWidth" min="10" max="2000" placeholder="Width">
+      <select id="widthUnit">
+        <option value="px">px</option>
+        <option value="%">%</option>
+      </select>
+    </div>
+    
+    <div class="resize-row">
+      <span class="resize-label">Height:</span> 
+      <input type="number" id="resizeHeight" min="10" max="2000" placeholder="Height">
+      <select id="heightUnit">
+        <option value="px">px</option>
+        <option value="%">%</option>
+        <option value="auto">auto</option>
+      </select>
+    </div>
+    
+    <div class="aspect-ratio-lock">
+      <input type="checkbox" id="lockAspectRatio" checked>
+      <label for="lockAspectRatio">Lock aspect ratio</label>
+    </div>
+    
+    <div class="preset-sizes">
+      <div class="preset-label">Quick sizes:</div>
+      <div class="preset-buttons">
+        <button class="preset-btn" onclick="applyPresetSize(200, 'auto')">Small</button>
+        <button class="preset-btn" onclick="applyPresetSize(400, 'auto')">Medium</button>
+        <button class="preset-btn" onclick="applyPresetSize(600, 'auto')">Large</button>
+        <button class="preset-btn" onclick="applyPresetSize(100, '%')">Full Width</button>
+        <button class="preset-btn" onclick="resetImageSize()">Original</button>
+      </div>
+    </div>
+    
+    <div class="resize-buttons">
+      <button onclick="applyResize()">Apply</button>
+      <button class="secondary" onclick="closeResize()">Cancel</button>
+    </div>
+  </div>
+    <!-- Word Count Display -->
+  <div id="wordCountDisplay" style="position: fixed; bottom: 5px; right: 16px; background: var(--lighter); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 11px; box-shadow: var(--shadow); z-index: 1000;">
+    <div>Words: <span id="wordCount">0</span></div>
+    <div>Characters: <span id="charCount">0</span></div>
+  </div>
+
+  <script>
+    // Global variables
+    let selectedMedia = null;
+    let currentSearchIndex = 0;
+    let searchResults = [];
+    let selectedTable = null;
+    let selectedTableCell = null;
+    let tableGridSize = { rows: 3, cols: 3 };
+
+// Initialize editor
+document.addEventListener('DOMContentLoaded', function() {
+  const editor = document.getElementById('editor');
+  
+  // Handle text selection for balloon toolbar
+  document.addEventListener('selectionchange', handleSelection);
+  
+  // Handle media clicks
+  editor.addEventListener('click', handleMediaClick);
+  // Handle word Count
+  editor.addEventListener('input', updateWordCount);
+  
+  // Keyboard shortcuts
+  document.addEventListener('keydown', handleKeyboardShortcuts);
+  
+  // Initialize table grid
+  initializeTableGrid();
+  
+  // Close modals when clicking outside
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal')) {
+      closeAllModals();
+    }
+  });
+  // Initialize KaTeX
+if (typeof katex !== 'undefined') {
+  renderMathInElement();
+}
+
+  // Initialize word count
+  wordCountVisible = true;
+  updateWordCount(); // Calculate initial count
+});
+
+
+    // Formatting functions
+    function format(command, value = null) {
+      document.execCommand(command, false, value);
+      updateActiveButtons();
+    }
+
+    function setFontFamily(font) {
+      if (font) {
+        format('fontName', font);
+      }
+    }
+
+    function setFontSize(size) {
+      if (size) {
+        format('fontSize', size);
+      }
+    }
+
+    function formatHeading(tag) {
+      if (tag) {
+        format('formatBlock', tag);
+      }
+    }
+
+  function setColor(color) {
+    // If no color is provided (can happen with color picker cancel)
+    if (!color) return;
+    
+    // Check if there's a selection
+    const selection = window.getSelection();
+    if (!selection.toString().trim() && !selection.isCollapsed) {
+      // If no text is selected, change the color for new text
+      document.execCommand('foreColor', false, color);
+    } else {
+      // If text is selected, apply the color
+      document.execCommand('foreColor', false, color);
+    }
+    updateActiveButtons();
+  }
+
+  function setHighlight(color) {
+    // If no color is provided (can happen with color picker cancel)
+    if (!color) return;
+    
+    // Check if there's a selection
+    const selection = window.getSelection();
+    if (!selection.toString().trim() && !selection.isCollapsed) {
+      // If no text is selected, show a message
+      showMessage('Please select some text to highlight', 'warning');
+      return;
+    }
+    
+    // Apply the highlight color
+    document.execCommand('hiliteColor', false, color);
+    updateActiveButtons();
+  }
+
+    // Advanced insertion functions
+    function createLink() {
+      const url = prompt('Enter the URL:');
+      if (url) {
+        const text = window.getSelection().toString() || prompt('Enter link text:') || url;
+        format('insertHTML', `<a href="${url}" target="_blank">${text}</a>`);
+      }
+    }
+
+function insertBlockquote() {
+  const selection = window.getSelection();
+  if (!selection.rangeCount) return;
+
+  const range = selection.getRangeAt(0);
+  const text = selection.toString() || 'Enter your quote here...';
+  
+  // Create a temporary element to hold our new content
+  const tempDiv = document.createElement('div');
+  
+  // Create the blockquote with the text
+  const blockquote = document.createElement('blockquote');
+  blockquote.textContent = text;
+  
+  // Add the blockquote and a space after it
+  tempDiv.appendChild(blockquote);
+  tempDiv.appendChild(document.createTextNode('\u00A0')); // &nbsp;
+  
+  // Insert at the current selection
+  range.deleteContents();
+  range.insertNode(tempDiv);
+  
+  // Set cursor position after the blockquote
+  const newRange = document.createRange();
+  newRange.setStartAfter(blockquote);
+  newRange.collapse(true);
+  
+  selection.removeAllRanges();
+  selection.addRange(newRange);
+}
+
+    function insertHorizontalRule() {
+      format('insertHorizontalRule');
+    }
+
+function insertCodeBlock() {
+  const editor = document.getElementById('editor');
+  const selection = window.getSelection();
+  
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    
+    // Check if we're already inside a code block
+    if (range.startContainer.closest('pre, code')) {
+      // If inside code block, just insert a new line
+      document.execCommand('insertHTML', false, '<br>');
+      return;
+    }
+    
+    const pre = document.createElement('pre');
+    const code = document.createElement('code');
+    
+    // If text is selected, use that as the code content
+    if (selection.toString().trim()) {
+      code.textContent = selection.toString();
+    } else {
+      code.textContent = '// Your code here...';
+    }
+    
+    pre.appendChild(code);
+    
+    // Create a temporary div to hold our new content
+    const tempDiv = document.createElement('div');
+    
+    // Add a space before and after the code block
+    tempDiv.appendChild(document.createTextNode('\u00A0')); // &nbsp;
+    tempDiv.appendChild(pre);
+    tempDiv.appendChild(document.createTextNode('\u00A0')); // &nbsp;
+    
+    // Delete any selected content first
+    range.deleteContents();
+    
+    // Insert the code block with surrounding spaces
+    range.insertNode(tempDiv);
+    
+    // Set cursor position after the code block
+    const newRange = document.createRange();
+    newRange.setStartAfter(pre);
+    newRange.collapse(true);
+    
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+    
+    // Focus the editor
+    editor.focus();
+    
+    showMessage('Code block inserted!', 'success');
+  }
+}
+
+    // Media insertion functions
+    function insertImage(input) {
+      const file = input.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = `<img src="${e.target.result}" alt="Uploaded image" style="max-width: 100%; height: auto; cursor: pointer;" onclick="selectMedia(this)">`;
+          format('insertHTML', img);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function insertImageByUrl() {
+      const url = prompt('Enter image URL:');
+      if (url) {
+        const alt = prompt('Enter alt text (optional):') || 'Image';
+        const img = `<img src="${url}" alt="${alt}" style="max-width: 100%; height: auto; cursor: pointer;" onclick="selectMedia(this)">`;
+        format('insertHTML', img);
+      }
+    }
+
+// Show table creation modal
+function showTableModal() {
+  document.getElementById('tableModal').classList.add('show');
+}
+
+// Close table modal
+function closeTableModal() {
+  document.getElementById('tableModal').classList.remove('show');
+}
+
+// Main table creation function - FIXED
+function createTable() {
+  const rows = parseInt(document.getElementById('tableRows').value);
+  const cols = parseInt(document.getElementById('tableCols').value);
+  const hasHeaderRow = document.getElementById('headerRow').checked;
+
+  // Validate input
+  if (isNaN(rows) || isNaN(cols) || rows < 1 || cols < 1 || rows > 20 || cols > 20) {
+    showMessage('Please enter valid numbers (1-20)', 'error');
+    return;
+  }
+
+  // Create table HTML
+  let tableHTML = '<table style="width: 100%; border-collapse: collapse; margin: 16px 0;">';
+  
+  for (let i = 0; i < rows; i++) {
+    tableHTML += '<tr>';
+    for (let j = 0; j < cols; j++) {
+      const isHeader = hasHeaderRow && i === 0;
+      const tag = isHeader ? 'th' : 'td';
+      const content = isHeader ? `Header ${j+1}` : `Row ${i+1}, Col ${j+1}`;
+      
+      tableHTML += `<${tag} style="border: 1px solid var(--border); padding: 8px;">${content}</${tag}>`;
+    }
+    tableHTML += '</tr>';
+  }
+  
+  tableHTML += '</table>';
+
+  // Insert table at cursor position
+  const editor = document.getElementById('editor');
+  const selection = window.getSelection();
+  
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    const div = document.createElement('div');
+    div.innerHTML = tableHTML;
+    
+    // Insert the table
+    range.deleteContents();
+    range.insertNode(div);
+    
+    // Place cursor after the table
+    const newRange = document.createRange();
+    newRange.setStartAfter(div);
+    newRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  } else {
+    // Fallback if no selection
+    editor.insertAdjacentHTML('beforeend', tableHTML);
+  }
+
+  closeTableModal();
+  showMessage(`Created ${rows}x${cols} table!`, 'success');
+}
+
+    // Media handling
+    function handleMediaClick(e) {
+      if (e.target.tagName === 'IMG') {
+        selectMedia(e.target);
+      }
+    }
+
+function selectMedia(media) {
+  // Clear previous selections
+  document.querySelectorAll('.media-selected').forEach(el => {
+    el.classList.remove('media-selected');
+  });
+  
+  selectedMedia = media;
+  media.classList.add('media-selected');
+  
+  // Show resize box
+  showResizeBox(media);
+}
+
+
+    function startResize(e, media, position) {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startWidth = media.offsetWidth;
+      const startHeight = media.offsetHeight;
+      const aspectRatio = startWidth / startHeight;
+      
+      function onMouseMove(e) {
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        
+        let newWidth = startWidth;
+        let newHeight = startHeight;
+        
+        switch (position) {
+          case 'se':
+            newWidth = startWidth + deltaX;
+            newHeight = document.getElementById('lockAspectRatio').checked ? 
+              newWidth / aspectRatio : startHeight + deltaY;
+            break;
+          case 'sw':
+            newWidth = startWidth - deltaX;
+            newHeight = document.getElementById('lockAspectRatio').checked ? 
+              newWidth / aspectRatio : startHeight + deltaY;
+            break;
+          case 'ne':
+            newWidth = startWidth + deltaX;
+            newHeight = document.getElementById('lockAspectRatio').checked ? 
+              newWidth / aspectRatio : startHeight - deltaY;
+            break;
+          case 'nw':
+            newWidth = startWidth - deltaX;
+            newHeight = document.getElementById('lockAspectRatio').checked ? 
+              newWidth / aspectRatio : startHeight - deltaY;
+            break;
+        }
+        
+        // Apply minimum constraints
+        newWidth = Math.max(50, newWidth);
+        newHeight = Math.max(50, newHeight);
+        
+        media.style.width = newWidth + 'px';
+        media.style.height = newHeight + 'px';
+        
+        // Update resize handles position
+        const handles = media.parentNode.querySelector('.image-resize-handles');
+        if (handles) {
+          positionResizeHandles(media, handles);
+        }
+        
+        // Update resize box values
+        updateResizeBoxValues(media);
+      }
+      
+      function onMouseUp() {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        showMessage('Image resized successfully!', 'success');
+      }
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    }
+
+    function showResizeBox(media) {
+      const resizeBox = document.getElementById('resizeBox');
+      const rect = media.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const boxWidth = 280;
+      const boxHeight = 300;
+      
+      // Position the resize box
+      let left = rect.right + 20;
+      let top = rect.top;
+      
+      // Ensure box stays within viewport
+      if (left + boxWidth > viewportWidth - 20) {
+        left = rect.left - boxWidth - 20;
+      }
+      if (left < 20) {
+        left = 20;
+      }
+      
+      if (top + boxHeight > viewportHeight - 20) {
+        top = viewportHeight - boxHeight - 20;
+      }
+      if (top < 20) {
+        top = 20;
+      }
+      
+      resizeBox.style.left = left + 'px';
+      resizeBox.style.top = top + 'px';
+      resizeBox.style.display = 'block';
+      
+      // Set current values
+      updateResizeBoxValues(media);
+    }
+
+    function updateResizeBoxValues(media) {
+      const currentWidth = media.style.width || media.offsetWidth + 'px';
+      const currentHeight = media.style.height || 'auto';
+      
+      document.getElementById('resizeWidth').value = parseInt(currentWidth);
+      document.getElementById('resizeHeight').value = currentHeight === 'auto' ? '' : parseInt(currentHeight);
+      document.getElementById('widthUnit').value = currentWidth.includes('%') ? '%' : 'px';
+      document.getElementById('heightUnit').value = currentHeight === 'auto' ? 'auto' : (currentHeight.includes('%') ? '%' : 'px');
+    }
+
+function applyResize() {
+  if (!selectedMedia) return;
+  
+  const width = document.getElementById('resizeWidth').value;
+  const height = document.getElementById('resizeHeight').value;
+  const widthUnit = document.getElementById('widthUnit').value;
+  const heightUnit = document.getElementById('heightUnit').value;
+  const lockAspectRatio = document.getElementById('lockAspectRatio').checked;
+  
+  if (width) {
+    selectedMedia.style.width = width + widthUnit;
+    
+    // If aspect ratio is locked and height is not auto, calculate proportional height
+    if (lockAspectRatio && heightUnit !== 'auto' && selectedMedia.naturalWidth && selectedMedia.naturalHeight) {
+      const aspectRatio = selectedMedia.naturalWidth / selectedMedia.naturalHeight;
+      const calculatedHeight = Math.round(parseInt(width) / aspectRatio);
+      selectedMedia.style.height = calculatedHeight + heightUnit;
+      document.getElementById('resizeHeight').value = calculatedHeight;
+    }
+  }
+  
+  if (heightUnit === 'auto') {
+    selectedMedia.style.height = 'auto';
+  } else if (height) {
+    selectedMedia.style.height = height + heightUnit;
+    
+    // If aspect ratio is locked, calculate proportional width
+    if (lockAspectRatio && selectedMedia.naturalWidth && selectedMedia.naturalHeight) {
+      const aspectRatio = selectedMedia.naturalWidth / selectedMedia.naturalHeight;
+      const calculatedWidth = Math.round(parseInt(height) * aspectRatio);
+      selectedMedia.style.width = calculatedWidth + widthUnit;
+      document.getElementById('resizeWidth').value = calculatedWidth;
+    }
+  }
+  
+  showMessage('Image resized successfully!', 'success');
+}
+
+    function applyPresetSize(size, unit) {
+      if (!selectedMedia) return;
+      
+      document.getElementById('resizeWidth').value = size;
+      document.getElementById('widthUnit').value = unit;
+      
+      if (unit === '%') {
+        document.getElementById('heightUnit').value = 'auto';
+        document.getElementById('resizeHeight').value = '';
+      } else {
+        // Calculate proportional height if aspect ratio is locked
+        if (document.getElementById('lockAspectRatio').checked && selectedMedia.naturalWidth && selectedMedia.naturalHeight) {
+          const aspectRatio = selectedMedia.naturalWidth / selectedMedia.naturalHeight;
+          const calculatedHeight = Math.round(size / aspectRatio);
+          document.getElementById('resizeHeight').value = calculatedHeight;
+          document.getElementById('heightUnit').value = 'px';
+        }
+      }
+      
+      applyResize();
+    }
+
+    function resetImageSize() {
+      if (!selectedMedia) return;
+      
+      selectedMedia.style.width = '';
+      selectedMedia.style.height = '';
+      
+      // Update resize box values
+      updateResizeBoxValues(selectedMedia);
+      
+      showMessage('Image reset to original size!', 'success');
+    }
+
+function closeResize() {
+  document.getElementById('resizeBox').style.display = 'none';
+  if (selectedMedia) {
+    selectedMedia.classList.remove('media-selected');
+    selectedMedia = null;
+  }
+}
+
+    // Add aspect ratio lock functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const widthInput = document.getElementById('resizeWidth');
+      const heightInput = document.getElementById('resizeHeight');
+      const lockCheckbox = document.getElementById('lockAspectRatio');
+      
+      let lastWidth = 0;
+      let lastHeight = 0;
+      
+      widthInput.addEventListener('input', function() {
+        if (lockCheckbox.checked && selectedMedia && selectedMedia.naturalWidth && selectedMedia.naturalHeight) {
+          const aspectRatio = selectedMedia.naturalWidth / selectedMedia.naturalHeight;
+          const newHeight = Math.round(parseInt(this.value) / aspectRatio);
+          if (!isNaN(newHeight) && document.getElementById('heightUnit').value !== 'auto') {
+            heightInput.value = newHeight;
+          }
+        }
+      });
+      
+      heightInput.addEventListener('input', function() {
+        if (lockCheckbox.checked && selectedMedia && selectedMedia.naturalWidth && selectedMedia.naturalHeight && document.getElementById('heightUnit').value !== 'auto') {
+          const aspectRatio = selectedMedia.naturalWidth / selectedMedia.naturalHeight;
+          const newWidth = Math.round(parseInt(this.value) * aspectRatio);
+          if (!isNaN(newWidth)) {
+            widthInput.value = newWidth;
+          }
+        }
+      });
+    });
+
+    // Selection handling for balloon toolbar
+    function handleSelection() {
+      const selection = window.getSelection();
+      const balloonToolbar = document.getElementById('balloon-toolbar');
+      
+      if (selection.rangeCount > 0 && !selection.isCollapsed) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        
+        if (rect.width > 0 && rect.height > 0) {
+          // Position the balloon toolbar near the selection
+          const editorRect = document.getElementById('editor').getBoundingClientRect();
+          const toolbarRect = balloonToolbar.getBoundingClientRect();
+          const toolbarWidth = 200; // Approximate width
+          const toolbarHeight = 52; // Approximate height including arrow
+          
+          // Calculate horizontal position (center on selection)
+          let left = rect.left + (rect.width / 2) - (toolbarWidth / 2);
+          
+          // Calculate vertical position (above selection by default)
+          let top = rect.top - toolbarHeight - 10;
+          let showBelow = false;
+          
+          // Check if toolbar would be cut off at the top
+          if (top < 10) {
+            top = rect.bottom + 10;
+            showBelow = true;
+          }
+          
+          // Ensure toolbar stays within horizontal viewport bounds
+          const viewportWidth = window.innerWidth;
+          if (left < 10) {
+            left = 10;
+          } else if (left + toolbarWidth > viewportWidth - 10) {
+            left = viewportWidth - toolbarWidth - 10;
+          }
+          
+          // Ensure toolbar stays within vertical viewport bounds
+          const viewportHeight = window.innerHeight;
+          if (top + toolbarHeight > viewportHeight - 10) {
+            if (!showBelow) {
+              top = rect.top - toolbarHeight - 10;
+              showBelow = false;
+            } else {
+              top = viewportHeight - toolbarHeight - 10;
+            }
+          }
+          
+          // Apply positioning
+          balloonToolbar.style.position = 'fixed';
+          balloonToolbar.style.left = left + 'px';
+          balloonToolbar.style.top = top + 'px';
+          
+          // Adjust arrow position based on whether toolbar is above or below
+          if (showBelow) {
+            balloonToolbar.style.setProperty('--arrow-position', 'top');
+            balloonToolbar.classList.add('below');
+          } else {
+            balloonToolbar.style.setProperty('--arrow-position', 'bottom');
+            balloonToolbar.classList.remove('below');
+          }
+          
+          balloonToolbar.classList.add('show');
+          
+          // Add a small delay to ensure smooth positioning
+          setTimeout(() => {
+            balloonToolbar.style.transition = 'all 0.2s ease-out';
+          }, 50);
+        }
+      } else {
+        balloonToolbar.classList.remove('show');
+        balloonToolbar.style.transition = '';
+      }
+      updateWordCount();
+    }
+
+        // Word count
+function updateWordCount() {
+  const editor = document.getElementById('editor');
+  const text = editor.innerText || editor.textContent || '';
+  
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const characters = text.length;
+  
+  document.getElementById('wordCount').textContent = words;
+  document.getElementById('charCount').textContent = characters;
+}
+
+    // Find and Replace functionality
+    function showFindReplace() {
+      document.getElementById('findReplaceModal').classList.add('show');
+      document.getElementById('findText').focus();
+    }
+
+    function closeFindReplace() {
+      document.getElementById('findReplaceModal').classList.remove('show');
+      clearSearchHighlights();
+    }
+
+    function findNext() {
+      const searchText = document.getElementById('findText').value;
+      if (!searchText) return;
+      
+      performSearch(searchText, true);
+    }
+
+    function findPrevious() {
+      const searchText = document.getElementById('findText').value;
+      if (!searchText) return;
+      
+      performSearch(searchText, false);
+    }
+
+    function replaceNext() {
+      const searchText = document.getElementById('findText').value;
+      const replaceText = document.getElementById('replaceText').value;
+      
+      if (!searchText) return;
+      
+      const editor = document.getElementById('editor');
+      const selection = window.getSelection();
+      
+      if (selection.toString() === searchText) {
+        format('insertText', replaceText);
+        showMessage('Text replaced!', 'success');
+      } else {
+        findNext();
+      }
+    }
+
+    function replaceAll() {
+      const searchText = document.getElementById('findText').value;
+      const replaceText = document.getElementById('replaceText').value;
+      
+      if (!searchText) return;
+      
+      const editor = document.getElementById('editor');
+      let content = editor.innerHTML;
+      const regex = new RegExp(escapeRegExp(searchText), 'g');
+      const matches = content.match(regex);
+      
+      if (matches) {
+        content = content.replace(regex, replaceText);
+        editor.innerHTML = content;
+        showMessage(`Replaced ${matches.length} occurrences!`, 'success');
+      } else {
+        showMessage('No matches found!', 'warning');
+      }
+    }
+
+    function performSearch(searchText, forward = true) {
+      const editor = document.getElementById('editor');
+      const selection = window.getSelection();
+      
+      if (window.find) {
+        const found = window.find(searchText, false, !forward, false, false, true, false);
+        if (!found) {
+          showMessage('No more matches found!', 'warning');
+        }
+      }
+    }
+
+    function clearSearchHighlights() {
+      // Remove any search highlights
+      const editor = document.getElementById('editor');
+      const highlighted = editor.querySelectorAll('.search-highlight');
+      highlighted.forEach(el => {
+        el.outerHTML = el.innerHTML;
+      });
+    }
+
+    // Export and utility functions
+function exportHTML() {
+  const editor = document.getElementById('editor');
+  const htmlContent = editor.innerHTML;
+  
+  // Create a clean HTML document without custom scrolling
+  const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exported Document</title>
+  <link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600&family=Hind+Siliguri:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@400;500;600&family=Tiro+Bangla:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      color: #0f172a;
+      background: white;
+      margin: 0;
+      padding: 20px;
+    }
+    
+    #editor {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    /* Basic content styling */
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Playfair Display', serif;
+      margin: 1.5em 0 0.5em 0;
+      line-height: 1.3;
+    }
+    
+    h1 { font-size: 2.5rem; }
+    h2 { font-size: 2rem; }
+    h3 { font-size: 1.75rem; }
+    h4 { font-size: 1.5rem; }
+    h5 { font-size: 1.25rem; }
+    h6 { font-size: 1.125rem; }
+    
+    p {
+      margin: 1em 0;
+    }
+    
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1em 0;
+    }
+    
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    
+    th {
+      background-color: rgba(99, 102, 241, 0.1);
+    }
+    
+    blockquote {
+      font-size: 1.25rem;
+      margin: 2em 0;
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      padding: 1.5em 2em 1.5em 5em;
+      border-left: 4px solid #6366f1;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%);
+      position: relative;
+    }
+    
+    blockquote::before {
+      content: '"';
+      color: #6366f1;
+      font-size: 4rem;
+      position: absolute;
+      left: 20px;
+      top: 10px;
+      opacity: 0.3;
+    }
+    
+    pre {
+      background: #f5f5f5;
+      color: #f8fafc;
+      padding: 1.5em;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    
+    code {
+      background: rgba(99, 102, 241, 0.1);
+      color: #6366f1;
+      padding: 0.25em 0.5em;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="editor">
+    ${htmlContent}
+  </div>
+</body>
+</html>`;
+
+  document.getElementById('htmlOutput').value = fullHtml;
+  document.getElementById('htmlModal').classList.add('show');
+}
+
+    function copyHTML() {
+      const textarea = document.getElementById('htmlOutput');
+      textarea.select();
+      document.execCommand('copy');
+      showMessage('HTML copied to clipboard!', 'success');
+    }
+
+function downloadHTML() {
+  const html = document.getElementById('htmlOutput').value;
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'document.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showMessage('HTML file downloaded with all styles and scrolling!', 'success');
+}
+function closeHTMLModal() {
+  document.getElementById('htmlModal').classList.remove('show');
+}
+
+    function printDocument() {
+      window.print();
+    }
+
+    function saveDocument() {
+      const content = document.getElementById('editor').innerHTML;
+      localStorage.setItem('editorContent', content);
+      showMessage('Document saved locally!', 'success');
+    }
+
+    // Utility functions
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function escapeRegExp(string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function updateActiveButtons() {
+      // Update button states based on current selection
+      const buttons = document.querySelectorAll('.tool-button');
+      buttons.forEach(button => button.classList.remove('active'));
+      
+      if (document.queryCommandState('bold')) {
+        document.querySelector('[onclick="format(\'bold\')"]').classList.add('active');
+      }
+      if (document.queryCommandState('italic')) {
+        document.querySelector('[onclick="format(\'italic\')"]').classList.add('active');
+      }
+      if (document.queryCommandState('underline')) {
+        document.querySelector('[onclick="format(\'underline\')"]').classList.add('active');
+      }
+    }
+
+    function showMessage(text, type = 'success') {
+      const message = document.createElement('div');
+      message.className = `message ${type}`;
+      message.textContent = text;
+      document.body.appendChild(message);
+      
+      setTimeout(() => message.classList.add('show'), 100);
+      setTimeout(() => {
+        message.classList.remove('show');
+        setTimeout(() => message.remove(), 300);
+      }, 3000);
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal').forEach(modal => {
+        modal.classList.remove('show');
+      });
+      document.getElementById('tableControls').classList.remove('show');
+      closeResize();
+    }
+
+    // Keyboard shortcuts
+    function handleKeyboardShortcuts(e) {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'b':
+            e.preventDefault();
+            format('bold');
+            break;
+          case 'i':
+            e.preventDefault();
+            format('italic');
+            break;
+          case 'u':
+            e.preventDefault();
+            format('underline');
+            break;
+          case 'f':
+            e.preventDefault();
+            showFindReplace();
+            break;
+          case 's':
+            e.preventDefault();
+            saveDocument();
+            break;
+          case 'p':
+            e.preventDefault();
+            printDocument();
+            break;
+        }
+      }
+      
+      if (e.key === 'Escape') {
+        closeAllModals();
+      }
+    }
+
+    // Load saved content on page load
+    window.addEventListener('load', function() {
+      const savedContent = localStorage.getItem('editorContent');
+      if (savedContent) {
+        document.getElementById('editor').innerHTML = savedContent;
+      }
+    });
+
+// Math equation functions
+function insertMathEquation() {
+  document.getElementById('mathModal').classList.add('show');
+  document.getElementById('mathInput').value = '';
+  document.getElementById('mathPreview').innerHTML = '<span style="color: var(--gray-light);">Equation preview will appear here</span>';
+  document.getElementById('mathInput').focus();
+  
+  // Update preview when typing
+  document.getElementById('mathInput').addEventListener('input', updateMathPreview);
+}
+
+function closeMathModal() {
+  document.getElementById('mathModal').classList.remove('show');
+}
+
+function updateMathPreview() {
+  const input = document.getElementById('mathInput').value;
+  const preview = document.getElementById('mathPreview');
+  
+  try {
+    if (input.trim()) {
+      katex.render(input, preview, {
+        throwOnError: false,
+        displayMode: true
+      });
+    } else {
+      preview.innerHTML = '<span style="color: var(--gray-light);">Equation preview will appear here</span>';
+    }
+  } catch (e) {
+    preview.innerHTML = `<span style="color: var(--error);">Error: ${e.message}</span>`;
+  }
+}
+
+function insertMath() {
+  const input = document.getElementById('mathInput').value.trim();
+  if (!input) {
+    showMessage('Please enter an equation', 'error');
+    return;
+  }
+  
+  try {
+    // Create a container for the equation
+    const equation = document.createElement('div');
+    equation.className = 'math-equation';
+    equation.setAttribute('contenteditable', 'false');
+    
+    // Render the equation
+    katex.render(input, equation, {
+      throwOnError: false,
+      displayMode: true
+    });
+    
+    // Insert into editor
+    const editor = document.getElementById('editor');
+    const selection = window.getSelection();
+    
+    if (selection.rangeCount > 0 && !selection.isCollapsed) {
+      // If text is selected, replace it with the equation
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(equation);
+    } else {
+      // Insert at cursor position or at end
+      const range = selection.getRangeAt(0);
+      const cursorPos = range.startOffset;
+      const textNode = range.startContainer;
+      
+      if (textNode.nodeType === Node.TEXT_NODE) {
+        // Insert in middle of text
+        const beforeText = textNode.textContent.substring(0, cursorPos);
+        const afterText = textNode.textContent.substring(cursorPos);
+        
+        const parent = textNode.parentNode;
+        parent.insertBefore(document.createTextNode(beforeText), textNode);
+        parent.insertBefore(equation, textNode);
+        textNode.textContent = afterText;
+        
+        // Move cursor after the equation
+        const newRange = document.createRange();
+        newRange.setStart(textNode, 0);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      } else {
+        // Insert at end
+        editor.appendChild(equation);
+      }
+    }
+    
+    // Add space after equation if needed
+    if (!editor.innerHTML.endsWith(' ') && !editor.innerHTML.endsWith('</div>')) {
+      editor.appendChild(document.createTextNode(' '));
+    }
+    
+    closeMathModal();
+    showMessage('Equation inserted!', 'success');
+    editor.focus();
+  } catch (e) {
+    showMessage(`Error: ${e.message}`, 'error');
+  }
+}
+
+// Auto-render any math elements in the editor
+function renderMathInEditor() {
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(document.getElementById('editor'), {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '\\(', right: '\\)', display: false},
+        {left: '\\[', right: '\\]', display: true}
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+// Initialize math rendering when page loads
+document.addEventListener('DOMContentLoaded', function() {
+  // Add this to your existing DOMContentLoaded function
+  if (typeof katex !== 'undefined') {
+    // Render any existing equations
+    setTimeout(renderMathInEditor, 100);
+    
+    // Re-render when content changes
+    document.getElementById('editor').addEventListener('input', function() {
+      setTimeout(renderMathInEditor, 50);
+    });
+  }
+});
+
+  </script>
+</body>
+</html>
